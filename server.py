@@ -7,8 +7,8 @@ from pathlib import Path
 import httpx
 import uvicorn
 import websockets
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File, Form
-from fastapi.responses import Response, JSONResponse
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, UploadFile, File, Form
+from fastapi.responses import Response, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from config import COMFYUI_URL, COMFYUI_WS, COMFYUI_HOST, COMFYUI_OUTPUT_DIR, COMFYUI_LOCAL, SERVER_PORT
@@ -200,14 +200,35 @@ async def list_outputs(offset: int = 0, limit: int = 20):
 
 
 @app.get("/api/view")
-async def view_file(filename: str, subfolder: str = "", type: str = "output"):
-    """Proxy file view from ComfyUI."""
+async def view_file(request: Request, filename: str, subfolder: str = "", type: str = "output"):
+    """Proxy file view from ComfyUI with range-request support for video."""
+    if COMFYUI_LOCAL:
+        # Serve directly — FileResponse handles Range headers automatically
+        base = Path(COMFYUI_OUTPUT_DIR).resolve()
+        file_path = (base / subfolder / filename).resolve() if subfolder else (base / filename).resolve()
+        if not file_path.is_file() or not str(file_path).startswith(str(base)):
+            return Response(status_code=404)
+        return FileResponse(file_path)
+
+    # Remote mode — forward Range header so browsers can play video
     params = {"filename": filename, "subfolder": subfolder, "type": type}
+    headers = {}
+    if "range" in request.headers:
+        headers["Range"] = request.headers["range"]
+
     async with httpx.AsyncClient(timeout=60) as client:
-        resp = await client.get(f"{COMFYUI_URL}/view", params=params)
+        resp = await client.get(f"{COMFYUI_URL}/view", params=params, headers=headers)
+
+    response_headers = {}
+    for h in ("content-length", "content-range", "accept-ranges"):
+        if h in resp.headers:
+            response_headers[h] = resp.headers[h]
+
     return Response(
         content=resp.content,
+        status_code=resp.status_code,
         media_type=resp.headers.get("content-type", "application/octet-stream"),
+        headers=response_headers,
     )
 
 

@@ -484,6 +484,8 @@ async function fetchResult(promptId) {
           el.src = url;
           el.controls = true;
           el.autoplay = true;
+          el.muted = true;
+          el.playsInline = true;
           el.loop = true;
           outputDiv.prepend(el);
         }
