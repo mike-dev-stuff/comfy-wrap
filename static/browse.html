@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en" class="browse">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Browse Outputs</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="browse-body">
+
+  <header class="browse-header">
+    <a href="/" class="browse-back">&larr; Back</a>
+    <span class="browse-title">Recent Outputs</span>
+  </header>
+
+  <main class="browse-main">
+    <div class="browse-grid" id="browse-grid">
+      <p class="placeholder-text" id="browse-placeholder">Loading...</p>
+    </div>
+  </main>
+
+  <!-- Fullscreen overlay -->
+  <div class="lightbox" id="lightbox">
+    <button class="lightbox-close" id="lightbox-close">&times;</button>
+    <div class="lightbox-content" id="lightbox-content"></div>
+  </div>
+
+  <script src="browse.js"></script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+[comfyui]
+host = "192.168.1.14"
+port = 8188
+output_dir = "/home/mike/repos/ComfyUI/output"
+
+[server]
+port = 8080

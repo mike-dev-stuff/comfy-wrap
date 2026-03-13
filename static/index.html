@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ComfyUI Wrapper</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Mobile header -->
+  <header class="mobile-header">
+    <button class="hamburger" id="sidebar-toggle" aria-label="Toggle sidebar">
+      <span></span><span></span><span></span>
+    </button>
+    <span class="mobile-brand">ComfyUI Wrapper</span>
+  </header>
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-inner">
+      <div class="sidebar-header">
+        <div class="sidebar-brand">ComfyUI Wrapper</div>
+        <button id="generate-btn" class="btn-generate">Generate</button>
+      </div>
+      <div class="header-progress" id="header-progress"><div class="header-progress-fill" id="header-progress-fill"></div></div>
+
+      <div class="mode-toggle">
+        <button class="mode-btn active" data-tab="t2i">Text to Image</button>
+        <button class="mode-btn" data-tab="i2v">Image to Video</button>
+      </div>
+
+      <!-- T2I -->
+      <div id="t2i" class="tab-content active">
+        <label for="t2i-positive">Positive prompt</label>
+        <textarea id="t2i-positive" rows="3" placeholder="Describe what you want to see...">masterpiece, best quality, very aesthetic, cinematic lighting, volumetric lighting, natural shadows, detailed textures</textarea>
+
+        <label for="t2i-negative">Negative prompt</label>
+        <textarea id="t2i-negative" rows="2" placeholder="What to avoid...">deformed, ugly, mutilated, disfigured, text, extra limbs, face cut, head cut, extra fingers, extra arms, poorly drawn face, mutation, bad proportions, cropped head, malformed limbs, mutated hands, fused fingers, long neck, low res, error, cropped, worst quality, low quality, jpeg artifacts, out of frame, watermark, signature, loli, child</textarea>
+
+        <label for="t2i-model">Model</label>
+        <select id="t2i-model"><option>Loading...</option></select>
+
+        <div class="row-2">
+          <div><label for="t2i-sampler">Sampler</label><select id="t2i-sampler"><option>Loading...</option></select></div>
+          <div><label for="t2i-scheduler">Scheduler</label><select id="t2i-scheduler"><option>Loading...</option></select></div>
+        </div>
+
+        <div class="lora-section">
+          <label>LoRAs</label>
+          <div id="t2i-lora-list"></div>
+          <button type="button" id="t2i-add-lora" class="btn-link">+ Add LoRA</button>
+        </div>
+
+        <div class="row-3">
+          <div><label for="t2i-width">Width</label><input type="number" id="t2i-width" value="720" step="8"></div>
+          <div><label for="t2i-height">Height</label><input type="number" id="t2i-height" value="1280" step="8"></div>
+          <div><label for="t2i-seed">Seed</label><input type="number" id="t2i-seed" value="-1" title="-1 = random"></div>
+        </div>
+
+        <div class="row-3">
+          <div><label for="t2i-steps">Steps</label><input type="number" id="t2i-steps" value="20" min="1" max="150"></div>
+          <div><label for="t2i-cfg">CFG</label><input type="number" id="t2i-cfg" value="4" step="0.5" min="0"></div>
+          <div><label for="t2i-denoise">Denoise</label><input type="number" id="t2i-denoise" value="1.0" step="0.05" min="0" max="1"></div>
+        </div>
+
+      </div>
+
+      <!-- I2V -->
+      <div id="i2v" class="tab-content">
+        <label for="i2v-positive">Positive prompt</label>
+        <textarea id="i2v-positive" rows="3" placeholder="Describe the motion..."></textarea>
+
+        <label for="i2v-negative">Negative prompt</label>
+        <textarea id="i2v-negative" rows="2" placeholder="What to avoid...">bad quality video, character is not moving, blurry, distortion, interlaced, overlay, censored, talking, slow motion</textarea>
+
+        <div class="row-2">
+          <div><label for="i2v-high-model">High Model</label><select id="i2v-high-model"><option>Loading...</option></select></div>
+          <div><label for="i2v-low-model">Low Model</label><select id="i2v-low-model"><option>Loading...</option></select></div>
+        </div>
+
+        <div class="row-2">
+          <div><label for="i2v-high-lora">High LoRA</label><select id="i2v-high-lora"><option>Loading...</option></select></div>
+          <div><label for="i2v-low-lora">Low LoRA</label><select id="i2v-low-lora"><option>Loading...</option></select></div>
+        </div>
+
+        <label>Input image</label>
+        <div class="upload-area" id="i2v-upload-area">
+          <input type="file" id="i2v-image" accept="image/*">
+          <p class="upload-label">Drag and drop or <span>browse</span></p>
+        </div>
+        <span id="i2v-image-name" class="upload-filename"></span>
+
+        <div class="row-3">
+          <div><label for="i2v-width">Width</label><input type="number" id="i2v-width" value="640" step="8"></div>
+          <div><label for="i2v-height">Height</label><input type="number" id="i2v-height" value="640" step="8"></div>
+          <div><label for="i2v-seed">Seed</label><input type="number" id="i2v-seed" value="-1" title="-1 = random"></div>
+        </div>
+
+        <div class="row-2">
+          <div><label for="i2v-length">Frames</label><input type="number" id="i2v-length" value="81" min="1"></div>
+          <div><label for="i2v-fps">FPS</label><input type="number" id="i2v-fps" value="16" min="1" max="60"></div>
+        </div>
+
+      </div>
+      <a href="/browse.html" class="nav-link">Browse recent outputs &rarr;</a>
+    </div>
+  </aside>
+
+  <button class="output-tab" id="output-toggle">&lt;&lt;</button>
+
+  <!-- Main content -->
+  <main class="main" id="main-panel">
+    <div id="output-section">
+      <p class="placeholder-text">Output will appear here</p>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
