@@ -11,7 +11,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File, F
 from fastapi.responses import Response, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from config import COMFYUI_URL, COMFYUI_WS, COMFYUI_HOST, COMFYUI_OUTPUT_DIR, SERVER_PORT
+from config import COMFYUI_URL, COMFYUI_WS, COMFYUI_HOST, COMFYUI_OUTPUT_DIR, COMFYUI_LOCAL, SERVER_PORT
 
 app = FastAPI()
 
@@ -116,12 +116,45 @@ VIDEO_EXTS = {".mp4", ".webm", ".gif"}
 
 MEDIA_EXTS = " -o ".join(f"-iname '*.{e}'" for e in ["png", "jpg", "jpeg", "webp", "mp4", "webm", "gif"])
 
-@app.get("/api/outputs")
-async def list_outputs(offset: int = 0, limit: int = 20):
-    """List images and videos in ComfyUI's output directory, newest first, paginated."""
-    # Filter to media files, sort newest first, paginate — all on the remote side
+MEDIA_SUFFIXES = IMAGE_EXTS | VIDEO_EXTS
+
+
+def _list_outputs_local(offset: int, limit: int):
+    """List output files from a local ComfyUI output directory."""
+    out = Path(COMFYUI_OUTPUT_DIR)
+    if not out.is_dir():
+        return {"items": [], "has_more": False}
+
+    files = []
+    for p in out.iterdir():
+        if p.is_file() and p.suffix.lower() in MEDIA_SUFFIXES:
+            files.append(p)
+        elif p.is_dir():
+            for child in p.iterdir():
+                if child.is_file() and child.suffix.lower() in MEDIA_SUFFIXES:
+                    files.append(child)
+
+    # Sort newest first
+    files.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+
+    fetch = limit + 1
+    page = files[offset : offset + fetch]
+
+    items = []
+    for p in page:
+        rel = p.relative_to(out)
+        subfolder = str(rel.parent) if str(rel.parent) != "." else ""
+        media = "video" if p.suffix.lower() in VIDEO_EXTS else "image"
+        items.append({"filename": p.name, "subfolder": subfolder, "type": "output", "media": media})
+
+    has_more = len(items) > limit
+    return {"items": items[:limit], "has_more": has_more}
+
+
+async def _list_outputs_remote(offset: int, limit: int):
+    """List output files from a remote ComfyUI host via SSH."""
     skip = offset + 1  # tail -n + is 1-indexed
-    fetch = limit + 1  # fetch one extra to detect if there are more
+    fetch = limit + 1
     remote_cmd = (
         f"find {COMFYUI_OUTPUT_DIR} -maxdepth 2 -type f"
         f" \\( {MEDIA_EXTS} \\)"
@@ -150,14 +183,20 @@ async def list_outputs(offset: int = 0, limit: int = 20):
             continue
         _, relpath = parts
         p = Path(relpath)
-        ext = p.suffix.lower()
-        filename = p.name
+        media = "video" if p.suffix.lower() in VIDEO_EXTS else "image"
         subfolder = str(p.parent) if str(p.parent) != "." else ""
-        media = "video" if ext in VIDEO_EXTS else "image"
-        items.append({"filename": filename, "subfolder": subfolder, "type": "output", "media": media})
+        items.append({"filename": p.name, "subfolder": subfolder, "type": "output", "media": media})
 
     has_more = len(items) > limit
     return {"items": items[:limit], "has_more": has_more}
+
+
+@app.get("/api/outputs")
+async def list_outputs(offset: int = 0, limit: int = 20):
+    """List images and videos in ComfyUI's output directory, newest first, paginated."""
+    if COMFYUI_LOCAL:
+        return _list_outputs_local(offset, limit)
+    return await _list_outputs_remote(offset, limit)
 
 
 @app.get("/api/view")
