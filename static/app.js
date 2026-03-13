@@ -1,9 +1,21 @@
 // ── State ──────────────────────────────────────────────────────────────────────
 let loraOptions = [];
 let ws = null;
-let wsClientId = null;
-let currentPromptId = null;
-let currentWorkflowType = null;
+let wsClientId = sessionStorage.getItem("wsClientId");
+let currentPromptId = sessionStorage.getItem("currentPromptId");
+let currentWorkflowType = sessionStorage.getItem("currentWorkflowType");
+
+function saveRunState() {
+  if (currentPromptId) {
+    sessionStorage.setItem("currentPromptId", currentPromptId);
+    sessionStorage.setItem("wsClientId", wsClientId);
+    sessionStorage.setItem("currentWorkflowType", currentWorkflowType || "");
+  } else {
+    sessionStorage.removeItem("currentPromptId");
+    sessionStorage.removeItem("currentWorkflowType");
+  }
+  if (wsClientId) sessionStorage.setItem("wsClientId", wsClientId);
+}
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {
@@ -17,6 +29,13 @@ document.addEventListener("DOMContentLoaded", () => {
   loadUnetModels();
   loadI2vLoras();
   connectWebSocket();
+
+  // Restore active run after navigation (e.g. returning from browse page)
+  if (currentPromptId) {
+    setGenerating(true);
+    showProgress(0);
+    checkResult(currentPromptId);
+  }
 
   document.getElementById("generate-btn").addEventListener("click", generate);
   document.getElementById("t2i-add-lora").addEventListener("click", addLoraRow);
@@ -229,7 +248,8 @@ async function uploadImage(file) {
 // ── WebSocket ─────────────────────────────────────────────────────────────────
 function connectWebSocket() {
   const protocol = location.protocol === "https:" ? "wss:" : "ws:";
-  ws = new WebSocket(`${protocol}//${location.host}/ws`);
+  const params = wsClientId ? `?clientId=${encodeURIComponent(wsClientId)}` : "";
+  ws = new WebSocket(`${protocol}//${location.host}/ws${params}`);
 
   ws.onmessage = (event) => {
     const data = JSON.parse(event.data);
@@ -269,8 +289,10 @@ async function checkResult(promptId) {
     const resp = await fetch(`/api/history/${promptId}`);
     const data = await resp.json();
     if (data[promptId] && data[promptId].outputs) {
+      // Already finished — fetch and display results
       fetchResult(promptId);
     }
+    // Otherwise still running — WebSocket will pick up progress
   } catch (_) {
     // Network error — will retry on next visibility change
   }
@@ -279,6 +301,7 @@ async function checkResult(promptId) {
 function handleWSMessage(data) {
   if (data.type === "client_id") {
     wsClientId = data.client_id;
+    saveRunState();
   } else if (data.type === "progress") {
     const pct = Math.round((data.data.value / data.data.max) * 100);
     showProgress(pct);
@@ -398,6 +421,7 @@ async function submitGeneration(params) {
     }
 
     currentPromptId = data.prompt_id;
+    saveRunState();
     showProgress(0);
   } catch (err) {
     alert("Generation failed: " + err.message);
@@ -467,6 +491,7 @@ async function fetchResult(promptId) {
     }
 
     currentPromptId = null;
+    saveRunState();
     setGenerating(false);
     hideProgress();
   };

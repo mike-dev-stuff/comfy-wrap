@@ -175,9 +175,9 @@ async def view_file(filename: str, subfolder: str = "", type: str = "output"):
 # ── WebSocket proxy ───────────────────────────────────────────────────────────
 
 @app.websocket("/ws")
-async def ws_proxy(ws: WebSocket):
+async def ws_proxy(ws: WebSocket, clientId: str | None = None):
     await ws.accept()
-    client_id = str(uuid.uuid4())
+    client_id = clientId or str(uuid.uuid4())
     try:
         async with websockets.connect(f"{COMFYUI_WS}?clientId={client_id}") as comfy_ws:
             # Send client_id to frontend
